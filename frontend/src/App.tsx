@@ -3,22 +3,13 @@ import type { FormEvent } from 'react'
 import './App.css'
 import './Auth.css'
 import { apiRequest, ApiError } from './api'
+import { updateBusinessProfile } from './businessProfile'
+import type { BusinessProfileInput } from './businessProfile'
 
 type AuthMode = 'login' | 'register'
 type Organization = { id: string; name: string; role: string }
-type BusinessProfile = {
-  business_name: string
-  description: string
-  industry: string
-  website: string
-  location: string
-  products_and_services: string
-  target_market: string
-  unique_value_proposition: string
-  communication_style: string
-}
 
-const emptyProfile: BusinessProfile = {
+const emptyProfile: BusinessProfileInput = {
   business_name: '',
   description: '',
   industry: '',
@@ -30,7 +21,7 @@ const emptyProfile: BusinessProfile = {
   communication_style: 'Professional',
 }
 
-const profileFields: { name: keyof BusinessProfile; label: string; multiline?: boolean }[] = [
+const profileFields: { name: keyof BusinessProfileInput; label: string; multiline?: boolean }[] = [
   { name: 'business_name', label: 'Business name' },
   { name: 'description', label: 'Business description', multiline: true },
   { name: 'industry', label: 'Industry' },
@@ -57,14 +48,14 @@ function App() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [selectedOrganizationId, setSelectedOrganizationId] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
-  const [profile, setProfile] = useState<BusinessProfile>(emptyProfile)
+  const [profile, setProfile] = useState<BusinessProfileInput>(emptyProfile)
   const [profileExists, setProfileExists] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   async function loadProfile(organizationId: string) {
     try {
-      const savedProfile = await apiRequest<BusinessProfile>('/business-profile', {}, organizationId)
+      const savedProfile = await apiRequest<BusinessProfileInput>('/business-profile', {}, organizationId)
       setProfile(savedProfile)
       setProfileExists(true)
     } catch (requestError) {
@@ -180,11 +171,7 @@ function App() {
     setError('')
     setNotice('')
     try {
-      const saved = await apiRequest<BusinessProfile>(
-        '/business-profile',
-        { method: 'PUT', body: JSON.stringify(profile) },
-        selectedOrganizationId,
-      )
+      const saved = await updateBusinessProfile(profile, selectedOrganizationId)
       setProfile(saved)
       setProfileExists(true)
       setNotice('Business profile saved.')
