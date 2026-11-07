@@ -5,9 +5,33 @@ import './Auth.css'
 import { apiRequest, ApiError } from './api'
 import { updateBusinessProfile } from './businessProfile'
 import type { BusinessProfileInput } from './businessProfile'
+import { FindLeads } from './FindLeads'
 
 type AuthMode = 'login' | 'register'
+type AppPage =
+  | 'overview'
+  | 'find-leads'
+  | 'prospects'
+  | 'campaigns'
+  | 'message-review'
+  | 'outreach'
+  | 'analytics'
+  | 'integrations'
+  | 'settings'
+
 type Organization = { id: string; name: string; role: string }
+
+const navigationItems: { id: AppPage; label: string; description: string }[] = [
+  { id: 'overview', label: 'Overview', description: 'A snapshot of your workspace and its prospecting activity.' },
+  { id: 'find-leads', label: 'Find Leads', description: 'Lead discovery tools will be available here.' },
+  { id: 'prospects', label: 'Prospects', description: 'Your prospect records and pipeline will be available here.' },
+  { id: 'campaigns', label: 'Campaigns', description: 'Campaign creation and tracking will be available here.' },
+  { id: 'message-review', label: 'Message Review', description: 'Messages awaiting your review will be available here.' },
+  { id: 'outreach', label: 'Outreach', description: 'Outreach activity and communication history will be available here.' },
+  { id: 'analytics', label: 'Analytics', description: 'Prospecting performance reporting will be available here.' },
+  { id: 'integrations', label: 'Integrations', description: 'Connected accounts and integrations will be available here.' },
+  { id: 'settings', label: 'Settings', description: 'Manage your workspace and business profile.' },
+]
 
 const emptyProfile: BusinessProfileInput = {
   business_name: '',
@@ -48,6 +72,8 @@ function App() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [selectedOrganizationId, setSelectedOrganizationId] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
+  const [activePage, setActivePage] = useState<AppPage>('overview')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [profile, setProfile] = useState<BusinessProfileInput>(emptyProfile)
   const [profileExists, setProfileExists] = useState(false)
   const [error, setError] = useState('')
@@ -193,6 +219,8 @@ function App() {
       setProfileExists(false)
       setPassword('')
       setNotice('')
+      setActivePage('overview')
+      setMobileNavOpen(false)
     }
   }
 
@@ -258,16 +286,29 @@ function App() {
   }
 
   const selectedRole = organizations.find((organization) => organization.id === selectedOrganizationId)?.role
+  const activeNavigationItem = navigationItems.find((item) => item.id === activePage) ?? navigationItems[0]
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${mobileNavOpen ? ' mobile-open' : ''}`}>
         <div className="brand-block">
           <div className="brand-mark">G</div>
           <div>
             <p className="eyebrow">AI prospecting</p>
             <h1>GetClient</h1>
           </div>
+          <button
+            type="button"
+            className="mobile-menu-button"
+            aria-controls="primary-navigation"
+            aria-expanded={mobileNavOpen}
+            aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            onClick={() => setMobileNavOpen((open) => !open)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
         <div className="workspace-switcher">
           <label className="eyebrow" htmlFor="workspace-select">Workspace</label>
@@ -276,79 +317,168 @@ function App() {
           </select>
           {selectedRole && <span className="role-label">{selectedRole}</span>}
         </div>
+        <nav className="nav" id="primary-navigation" aria-label="Main navigation">
+            {navigationItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`nav-item${activePage === item.id ? ' active' : ''}`}
+                aria-current={activePage === item.id ? 'page' : undefined}
+                onClick={() => {
+                  setActivePage(item.id)
+                  setMobileNavOpen(false)
+                  setError('')
+                  setNotice('')
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+        </nav>
         <div className="sidebar-note">
-          <span className="status-dot" />
-          <span>Workspace data is private to its members.</span>
+            <span className="status-dot" />
+            <span>Workspace data is private to its members.</span>
         </div>
         <button type="button" className="nav-item logout-button" onClick={() => void logout()}>Sign out</button>
       </aside>
 
       <main className="main-panel">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">Workspace setup</p>
-            <h2>Business profile</h2>
-          </div>
-          <span className="profile-status">{profileExists ? 'Profile configured' : 'Setup in progress'}</span>
+            <div>
+              <p className="eyebrow">{activePage === 'overview' ? 'Workspace' : 'GetClient workspace'}</p>
+              <h2>{activeNavigationItem.label}</h2>
+            </div>
+            {activePage === 'overview' && (
+              <span className={`profile-status${profileExists ? ' is-configured' : ''}`}>
+                {profileExists ? 'Business profile configured' : 'Business profile not configured'}
+              </span>
+            )}
         </header>
 
         {error && <p className="form-message error-message page-message" role="alert">{error}</p>}
         {notice && <p className="form-message success-message page-message" role="status">{notice}</p>}
 
-        <section className="settings-grid">
-          <article className="panel workspace-panel">
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Organisation</p>
-                <h3>Workspace details</h3>
+        {activePage === 'find-leads' ? (
+          <FindLeads />
+        ) : activePage === 'overview' ? (
+            <section className="overview-page" aria-label="Workspace overview">
+              <div className="overview-welcome">
+                <p className="eyebrow">Your prospecting workspace</p>
+                <h3>Build meaningful client conversations.</h3>
+                <p>Manage your business context and keep your prospecting work in one place.</p>
               </div>
-            </div>
-            <form className="workspace-form" onSubmit={saveOrganization}>
-              <label htmlFor="workspace-name">Workspace name</label>
-              <div className="inline-form-row">
-                <input id="workspace-name" value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} required maxLength={200} />
-                <button type="submit" className="secondary-button" disabled={selectedRole === 'member'}>Save name</button>
-              </div>
-            </form>
-          </article>
 
-          <article className="panel profile-panel">
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Business context</p>
-                <h3>Tell us what you offer</h3>
+              <div className="overview-grid">
+                <article className="panel overview-card setup-card">
+                  <div className="panel-header">
+                    <div>
+                      <p className="eyebrow">Workspace setup</p>
+                      <h3>Business profile</h3>
+                    </div>
+                    <span className={`setup-indicator${profileExists ? ' is-configured' : ''}`}>
+                      {profileExists ? 'Configured' : 'Needs setup'}
+                    </span>
+                  </div>
+                  <p>
+                    {profileExists
+                      ? 'Your business information is saved and ready to use as prospecting tools are added.'
+                      : 'Add your business details to give future prospecting tools useful context.'}
+                  </p>
+                  <button type="button" className="secondary-button" onClick={() => setActivePage('settings')}>
+                    {profileExists ? 'Review business profile' : 'Complete business profile'}
+                  </button>
+                </article>
+
+                <article className="panel overview-card activity-card">
+                  <div className="panel-header">
+                    <div>
+                      <p className="eyebrow">Prospecting</p>
+                      <h3>Activity</h3>
+                    </div>
+                  </div>
+                  <div className="empty-state">
+                    <span className="empty-state-mark" aria-hidden="true">+</span>
+                    <p className="empty-state-title">Prospecting tools are coming next</p>
+                    <p>Lead discovery, prospect tracking, campaigns, and outreach are not available yet.</p>
+                  </div>
+                </article>
+
+                <article className="panel overview-card recent-activity-card">
+                  <div className="panel-header">
+                    <div>
+                      <p className="eyebrow">Workspace updates</p>
+                      <h3>Recent activity</h3>
+                    </div>
+                  </div>
+                  <p className="quiet-empty-state">There is no prospecting activity to show yet.</p>
+                </article>
               </div>
-              <span className="required-note">All fields required</span>
-            </div>
-            <form className="profile-form" onSubmit={saveProfile}>
-              {profileFields.map((field) => (
-                <label key={field.name} className={field.multiline ? 'wide-field' : ''}>
-                  {field.label}
-                  {field.multiline ? (
-                    <textarea
-                      value={profile[field.name]}
-                      onChange={(event) => setProfile((current) => ({ ...current, [field.name]: event.target.value }))}
-                      required
-                      rows={3}
-                    />
-                  ) : (
-                    <input
-                      type={field.name === 'website' ? 'url' : 'text'}
-                      value={profile[field.name]}
-                      onChange={(event) => setProfile((current) => ({ ...current, [field.name]: event.target.value }))}
-                      required
-                      maxLength={field.name === 'website' ? 2048 : undefined}
-                    />
-                  )}
-                </label>
-              ))}
-              <div className="profile-actions wide-field">
-                <span>Changes are saved to the selected workspace.</span>
-                <button type="submit" className="primary-button">Save business profile</button>
-              </div>
-            </form>
-          </article>
-        </section>
+            </section>
+        ) : activePage === 'settings' ? (
+            <section className="settings-grid" aria-label="Workspace settings">
+              <article className="panel workspace-panel">
+                <div className="panel-header">
+                  <div>
+                    <p className="eyebrow">Organisation</p>
+                    <h3>Workspace details</h3>
+                  </div>
+                </div>
+                <form className="workspace-form" onSubmit={saveOrganization}>
+                  <label htmlFor="workspace-name">Workspace name</label>
+                  <div className="inline-form-row">
+                    <input id="workspace-name" value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} required maxLength={200} />
+                    <button type="submit" className="secondary-button" disabled={selectedRole === 'member'}>Save name</button>
+                  </div>
+                </form>
+              </article>
+
+              <article className="panel profile-panel">
+                <div className="panel-header">
+                  <div>
+                    <p className="eyebrow">Business context</p>
+                    <h3>Business profile</h3>
+                  </div>
+                  <span className="required-note">All fields required</span>
+                </div>
+                <form className="profile-form" onSubmit={saveProfile}>
+                  {profileFields.map((field) => (
+                    <label key={field.name} className={field.multiline ? 'wide-field' : ''}>
+                      {field.label}
+                      {field.multiline ? (
+                        <textarea
+                          value={profile[field.name]}
+                          onChange={(event) => setProfile((current) => ({ ...current, [field.name]: event.target.value }))}
+                          required
+                          rows={3}
+                        />
+                      ) : (
+                        <input
+                          type={field.name === 'website' ? 'url' : 'text'}
+                          value={profile[field.name]}
+                          onChange={(event) => setProfile((current) => ({ ...current, [field.name]: event.target.value }))}
+                          required
+                          maxLength={field.name === 'website' ? 2048 : undefined}
+                        />
+                      )}
+                    </label>
+                  ))}
+                  <div className="profile-actions wide-field">
+                    <span>Changes are saved to the selected workspace.</span>
+                    <button type="submit" className="primary-button">Save business profile</button>
+                  </div>
+                </form>
+              </article>
+            </section>
+        ) : (
+            <section className="panel coming-soon-panel" aria-live="polite">
+              <p className="eyebrow">{activeNavigationItem.label}</p>
+              <h3>{activeNavigationItem.label} is not available yet</h3>
+              <p>{activeNavigationItem.description}</p>
+              <button type="button" className="secondary-button" onClick={() => setActivePage('overview')}>
+                Return to overview
+              </button>
+            </section>
+        )}
       </main>
     </div>
   )

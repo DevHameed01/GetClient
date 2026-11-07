@@ -145,41 +145,62 @@ The Lead Discovery Engine identifies potential customers based on the user's ICP
 - Public business websites.
 - Authorised business directories.
 - Licensed business data providers.
-- Official platform APIs.
+- Instagram official APIs and separately licensed providers approved for that use.
+- X (Twitter) official APIs and separately licensed providers approved for that use.
+- LinkedIn official APIs and separately licensed providers approved for that use.
 - User submitted prospect lists and uploaded CSV files.
 - Other approved data providers.
 
-**Discovery parameters:** target industry, location, business category, number of prospects, company size, search keywords, and specific business characteristics.
+Instagram, X, and LinkedIn are separate discovery and enrichment sources. Each source has its own integration, access approval, search capabilities, data fields, permissions, quotas, rate limits, retention rules, and terms. A platform's availability as an outreach channel does not imply that it supports prospect discovery or enrichment.
+
+**Discoverable record types:** users must eventually be able to search for and discover both companies and founders where a platform's official API or a contractually licensed provider permits the requested search. Companies and founders are distinct records. A founder may be related to one or more companies through explicit, attributable company-founder relationships; discovery of a profile must not by itself be treated as proof that the person founded or currently leads a company.
+
+**Discovery parameters:** target record type (company, founder, or both), industry, location, business category, company size where available, keywords, relevant public activity, and source-specific criteria supported by the selected provider. The interface must distinguish criteria a provider supports from filters GetClient cannot apply at source.
 
 **The system must:**
 
-1. Accept discovery parameters.
-2. Search available sources.
-3. Identify relevant businesses.
-4. Collect permitted business information.
-5. Extract available contact information.
-6. Identify source URLs.
-7. Detect duplicates.
-8. Store prospect records.
-9. Return discovery results to the user.
+1. Accept discovery parameters and a requested record type.
+2. Search only sources enabled for the organisation and permitted for the specific use.
+3. Identify relevant companies and/or founders without conflating the two entity types.
+4. Collect only fields the source permits GetClient to access, display, and retain.
+5. Extract contact information only when the source licence and applicable law permit it.
+6. Preserve source, source record/profile URL or identifier, and retrieval timestamp for each returned or enriched field.
+7. Detect duplicates separately for companies, founders, and source-specific profiles; represent uncertain matches for review rather than silently merging identities.
+8. Link companies and founders only with attributable relationship evidence and a retrieval timestamp.
+9. Enforce source-specific rate limits, quotas, retention/deletion periods, and restrictions on export, reuse, and downstream display.
+10. Return results with their entity type, source, freshness, and any material limitations.
 
-**Prospect data fields**
+**Company and founder information**
+
+Company and founder are separate canonical entities. Company records hold business attributes; founder records hold person attributes. Company-founder relationship records link them and retain the relationship type/title, source evidence, and observation time. Prospect pipeline status may reference either entity or a company-founder relationship, without duplicating or merging their canonical records.
+
+Social profiles and observations must be represented independently of these canonical entities. A social profile identifies a source-platform account and the entity it is associated with, if known. Each social-derived field or activity observation must retain, at minimum, its platform/source, provider or API where applicable, source profile/item URL or stable source identifier where permitted, retrieval timestamp, and applicable retention/expiry rule. Keep provenance per field, not only once on the parent company or founder. Store raw provider payloads only when explicitly permitted and necessary; otherwise retain only permitted normalized fields and provenance.
+
+| Entity or field | Notes |
+| --- | --- |
+| Company | Canonical business record; includes name, website, description, industry, and location when verified and permitted |
+| Founder | Separate person record; includes only permitted, relevant professional information |
+| Company-founder relationship | Explicit link between a company and founder; includes relationship type, supporting source, and observation time |
+| Social profile | Platform-specific profile URL/identifier associated with a company or founder, with match confidence and source provenance |
+| Social field/activity observation | One permitted public business/profile field or relevant public activity item, with source and retrieval timestamp for that specific value |
+| Prospect pipeline record | Workflow state referencing a company, founder, or relationship; not a substitute for either canonical entity |
+
+Social profile links, public business information, and relevant activity may be used to enrich existing company and founder records only through supported, permitted access. Enrichment must add provenance and a retrieval timestamp per field and must not overwrite independently sourced values without preserving their provenance and history.
+
+**Unsupported capabilities and provider dependencies:** general-purpose search across every Instagram account/post, unrestricted public-member or company search on LinkedIn, and unlimited/bulk X profile or post search must not be assumed. Platform APIs may not expose these capabilities, may restrict them to approved products or account types, or may limit results and retention. If native APIs do not support the required company/founder discovery or enrichment, evaluate a third-party licensed provider whose contract explicitly permits this SaaS use, the specific social-derived fields, customer-facing display, retention, and any export or outreach workflow. A third-party provider does not waive the originating platform's restrictions or applicable law.
+
+**Initial discovery record fields**
 
 | Field | Notes |
 | --- | --- |
-| Prospect ID | System generated |
-| Business name |  |
-| Business website |  |
-| Business description |  |
-| Industry |  |
-| Location |  |
-| Public business email | If available |
-| Public business phone number | If available |
-| Social profile URLs | If available and lawfully collected |
-| Discovery source |  |
-| Discovery timestamp |  |
-| Research status |  |
-| Qualification status |  |
+| Company ID / Founder ID | System generated; different entity types have separate identifiers |
+| Company-founder relationship | Optional attributed relationship linking the separate records |
+| Business/person attributes | Each attribute retains its own source and retrieval timestamp |
+| Social profile links | Platform-specific profile references; retain only as permitted |
+| Relevant social activity | Public, relevant activity only where the platform/provider permits access and storage |
+| Discovery source and timestamp | Source-level job provenance; does not replace per-field provenance |
+| Research status | Applies to the referenced record or relationship |
+| Qualification status | Applies to the prospect pipeline record |
 
 The system must distinguish verified information from inferred information. It must not fabricate contact information or claim to have verified information it has not checked.
 
@@ -297,11 +318,13 @@ No message is sent automatically by default. The user retains control over all o
 
 ### 4.9 Outreach Management and Platform Integrations
 
-**Initial target platforms:** Instagram, X, LinkedIn and Email.
+**Initial target communication platforms:** Instagram, X, LinkedIn and Email. These are outreach targets; their inclusion here does not grant discovery or enrichment access. Discovery/enrichment integrations for Instagram, X, and LinkedIn are separate source adapters governed by the lead discovery requirements above.
 
 Each platform has an independent integration module handling authentication, authorisation, account connections, available API operations, message formatting, sending permissions, delivery status, error handling and rate limits.
 
 **Platform restrictions.** GetClient must not depend on unauthorised scraping, browser automation or prohibited messaging automation. Each integration uses official APIs, authorised providers or explicitly permitted workflows.
+
+Social discovery and enrichment must not be implemented through scraping, browser automation, session-cookie reuse, or circumvention of API access controls. Platform-specific API permissions, approved product eligibility, scopes, commercial licensing, rate limits, retention, display, export, and deletion requirements must be reviewed before enabling each capability and revalidated when platform terms or APIs change. No capability is considered supported merely because a profile or post is publicly viewable in a browser.
 
 Where automated sending is not permitted, GetClient provides a human assisted workflow:
 
@@ -315,9 +338,9 @@ Where automated sending is not permitted, GetClient provides a human assisted wo
 
 | Platform | Approach |
 | --- | --- |
-| Instagram | Research through permitted sources and authorised integrations. Support human assisted DM preparation where automated sending is unavailable. |
-| X | Use authorised API capabilities where available. Automated unsolicited bulk DMs must not be supported. |
-| LinkedIn | Use permitted data sources and official integration capabilities. No unauthorised profile scraping or automated messaging. |
+| Instagram | Use separately permissioned official API capabilities or a licensed provider for discovery/enrichment only when the applicable terms allow it. Do not assume arbitrary account or founder search is available. Support human assisted DM preparation where sending APIs are unavailable. |
+| X | Use authorised API capabilities for separately scoped search/enrichment and sending. Search access, fields, quotas, and retention depend on the granted tier and terms. Automated unsolicited bulk DMs must not be supported. |
+| LinkedIn | Use only approved APIs/products or providers with explicit rights for the intended search, enrichment, and display. Broad member/company search is not assumed to be available. No unauthorised profile scraping or automated messaging. |
 | Email | Support authorised email integrations, subject generation, sending permissions and unsubscribe management. Must support applicable consent, privacy and anti spam requirements. |
 
 **Sending controls.** The platform must provide explicit user approval, sending limits, duplicate contact prevention, suppression lists, unsubscribe and opt out handling, delivery tracking where supported, error reporting and audit logs. No automated sending occurs without user authorisation and platform permission.
@@ -373,14 +396,15 @@ Metrics must be calculated from actual recorded activity, never assumed delivery
 | 1 | Account creation | The user creates a GetClient account. |
 | 2 | Business configuration | The user provides information about their business, products and services. |
 | 3 | ICP configuration | The user defines the businesses or individuals to target. |
-| 4 | Prospect discovery | The user starts a discovery campaign and GetClient searches available sources. |
-| 5 | Lead qualification | The AI evaluates and ranks discovered businesses. The user reviews them. |
-| 6 | Business research | GetClient investigates selected prospects and generates research reports. |
-| 7 | Message generation | The AI prepares personalised outreach messages. |
-| 8 | Human review | The user reviews research and messages, then approves, edits, regenerates or rejects. |
-| 9 | Outreach | The user sends approved messages through permitted integrations or human assisted workflows. |
-| 10 | Tracking | GetClient records outreach activity and updates prospect statuses. |
-| 11 | Follow up and conversion | The user manages responses, follow ups and conversions from the prospect dashboard. |
+| 4 | Prospect discovery | The user selects company, founder, or both and starts a campaign. GetClient searches only the selected, permitted sources and reports source limitations. |
+| 5 | Social enrichment | Where permitted, separate Instagram, X, and LinkedIn adapters add profile links, public business information, and relevant activity to company/founder records with field-level source and retrieval timestamps. |
+| 6 | Lead qualification | The AI evaluates and ranks discovered prospects. The user reviews them. |
+| 7 | Business research | GetClient investigates selected prospects and generates research reports. |
+| 8 | Message generation | The AI prepares personalised outreach messages. |
+| 9 | Human review | The user reviews research and messages, then approves, edits, regenerates or rejects. |
+| 10 | Outreach | The user sends approved messages through permitted integrations or human assisted workflows. |
+| 11 | Tracking | GetClient records outreach activity and updates prospect statuses. |
+| 12 | Follow up and conversion | The user manages responses, follow ups and conversions from the prospect dashboard. |
 
 ## 6. Functional Requirements Summary
 
@@ -390,15 +414,18 @@ Metrics must be calculated from actual recorded activity, never assumed delivery
 | Business profile | Critical | Yes |
 | ICP builder | Critical | Yes |
 | Lead discovery | Critical | Yes |
+| Social company discovery (Instagram, X, LinkedIn) | Medium | Later; gated by official API access or explicit provider licensing |
+| Social founder discovery (Instagram, X, LinkedIn) | Medium | Later; gated by official API access or explicit provider licensing |
+| Social enrichment with field-level provenance | Medium | Later; gated by source permissions and retention terms |
 | Lead qualification | Critical | Yes |
 | Business research | Critical | Yes |
 | Message generation | Critical | Yes |
 | Approval dashboard | Critical | Yes |
 | Prospect CRM | High | Yes |
 | Email integration | High | Limited |
-| Instagram integration | Medium | Research and handoff |
-| X integration | Medium | Research and handoff |
-| LinkedIn integration | Medium | Research and handoff |
+| Instagram integration | Medium | Separate discovery/enrichment and outreach capabilities; API access and fields subject to platform permission |
+| X integration | Medium | Separate discovery/enrichment and outreach capabilities; API access and fields subject to platform permission |
+| LinkedIn integration | Medium | Separate discovery/enrichment and outreach capabilities; API access and fields subject to platform permission |
 | Follow up intelligence | Medium | Basic |
 | Analytics | Medium | Basic |
 | Team collaboration | Low | Later |
@@ -475,7 +502,9 @@ getclient/
 │   │   │   ├── discovery/, qualification/, intelligence/
 │   │   │   └── personalisation/, outreach/
 │   │   ├── integrations/
-│   │   │   ├── search/, email/, instagram/, linkedin/, x/
+│   │   │   ├── discovery/social/instagram/, discovery/social/x/, discovery/social/linkedin/
+│   │   │   ├── discovery/licensed_providers/
+│   │   │   └── outreach/email/, outreach/instagram/, outreach/linkedin/, outreach/x/
 │   │   ├── workers/
 │   │   └── database/
 │   └── tests/
@@ -502,6 +531,8 @@ getclient/
 8. Auditable user actions.
 9. Secure credential management.
 10. API first architecture.
+11. Treat social discovery, social enrichment, and outreach as separate permissioned capabilities, even when they use the same platform.
+12. Keep provider adapters isolated so each source's access rules, field mapping, rate limits, and retention controls are enforced independently.
 
 ## 9. Database Requirements
 
@@ -516,10 +547,16 @@ The initial database supports the following entities. All organisation owned rec
 | Services | Products and services offered |
 | ICPs | Target customer configurations |
 | Campaigns | Prospect discovery campaigns |
-| Prospects | Discovered businesses and contacts |
-| LeadScores | Qualification results |
+| Companies | Canonical business identities and business attributes |
+| Founders | Canonical person identities for founders, separate from companies |
+| CompanyFounderRelationships | Attributed links between companies and founders, including relationship type and observation time |
+| Prospects | Pipeline records referencing a company, founder, or company-founder relationship |
+| SocialProfiles | Platform-specific profile identities associated with a company or founder |
+| SocialDataObservations | Field-level social attributes and activity with source/provider, source reference, retrieval timestamp, and retention/expiry metadata |
+| DiscoveryRuns | Search requests, selected sources, criteria, status, quota use, and timing for auditability |
+| LeadScores | Qualification results for prospect pipeline records |
 | ResearchReports | Business intelligence reports |
-| EvidenceSources | Supporting research sources |
+| EvidenceSources | Supporting research sources and field-level provenance references |
 | MessageDrafts | Generated outreach messages |
 | MessageVersions | Draft revision history |
 | Approvals | Human approval records |
@@ -569,7 +606,9 @@ GetClient processes business information, contact information and communication 
 
 **Data privacy:** privacy policy, clear data collection disclosures, user data export, account deletion, data retention controls, contact data deletion, and suppression and opt out management.
 
-**Data collection.** GetClient only collects information through permitted means and must respect applicable privacy laws, platform terms of service, API usage requirements, data provider licensing restrictions and anti spam legislation. Users must be able to identify the source of prospect information and its collection date.
+**Data collection.** GetClient only collects information through permitted means and must respect applicable privacy laws, platform terms of service, API usage requirements, data provider licensing restrictions and anti spam legislation. Users must be able to identify the source of prospect information and its collection date. For social-derived fields and activity, record provenance and retrieval timestamp per field, apply source-specific expiry/deletion rules, and avoid retaining raw payloads unless expressly allowed. A publicly visible profile or post is not, by itself, permission to collect, retain, enrich, or use it for outreach.
+
+**Social platform governance.** Instagram, X, and LinkedIn are independent sources and require separate approvals and provider configurations. At implementation time, verify the current official API's permitted search subject, query types, supported profile/business fields, approved account/product eligibility, commercial use, rate limits, display rules, retention/deletion, and export rights. If official APIs do not support the desired company or founder discovery, mark that capability unavailable or procure a provider license that expressly permits the exact use; third-party access must not be used to circumvent a platform's restrictions.
 
 **AI safety and reliability**
 
@@ -587,6 +626,8 @@ The interface is clean, modern and professional. As a productivity oriented SaaS
 **Main dashboard** displays prospecting activity, qualified leads, messages awaiting approval, recent outreach, follow up tasks and acquisition statistics.
 
 **Main navigation:** Dashboard, Find Leads, Prospects, Campaigns, Message Review, Outreach, Analytics, Integrations, Settings.
+
+**Social discovery and enrichment interface.** Users can eventually choose Instagram, X, and LinkedIn independently as discovery or enrichment sources, select companies, founders, or both, and understand which filters are actually supported by each source. Results and enriched fields must show their source and retrieval time. Unsupported or unavailable searches must be clearly disclosed; the interface must not imply that a platform was searched when it was not.
 
 **Prospect detail page** contains business information, contact information, qualification score, research report, identified opportunities, generated messages, communication history, notes and prospect status.
 
@@ -630,7 +671,7 @@ The initial product prioritises research quality, qualification relevance and me
 | Phase | Scope | Deliverable |
 | --- | --- | --- |
 | 1. Product foundation | Repository setup, backend and frontend configuration, database setup, authentication, multi tenant foundation, business profile management | Functional application foundation |
-| 2. Prospecting engine | ICP builder, discovery source integration, lead collection, prospect database, duplicate detection, lead qualification, filtering | Users can discover, store and qualify prospects |
+| 2. Prospecting engine | ICP builder, discovery source integration, separate company/founder records and relationships, lead collection, prospect database, duplicate detection, lead qualification, filtering; later social discovery/enrichment only where licensed and supported | Users can discover and qualify companies and founders using permitted sources |
 | 3. Business intelligence | Website research, business information extraction, research reports, evidence collection, opportunity identification | GetClient understands individual prospect businesses |
 | 4. Personalisation engine | AI orchestration, prompt architecture, message generation, tone configuration, multiple drafts, personalisation evidence, message quality checks | Users can generate individualised outreach messages |
 | 5. Approval and CRM | Message review dashboard, editing, approval workflow, prospect pipeline, communication history, notes and tags | Users can manage prospects and approve outreach |
@@ -641,7 +682,9 @@ The initial product prioritises research quality, qualification relevance and me
 
 | Risk | Mitigation |
 | --- | --- |
-| Platform API restrictions | Independent integration modules and permitted fallback workflows |
+| Platform API restrictions | Separate source adapters, capability checks, and permitted fallback workflows; no scraping or access-control circumvention |
+| Social data licensing and retention | Per-field provenance, retrieval timestamps, expiry/deletion controls, and provider-specific contracts |
+| Unsupported social search | Clearly disclose platform search gaps; evaluate licensed providers with explicit customer-facing rights |
 | Inaccurate AI research | Evidence backed research and confidence indicators |
 | Generic messages | Prospect specific research and personalisation validation |
 | High AI costs | Caching, model selection and usage controls |
@@ -707,6 +750,12 @@ The MVP is not complete until the following conditions are met.
 - Errors are visible to users.
 - Background jobs recover from appropriate failures.
 - Sensitive credentials are not exposed to the frontend.
+
+Social discovery requirements below are release gates for any future Instagram, X, or LinkedIn integration; they do not imply that these integrations exist or block the initial MVP:
+
+- Each platform is an independently permissioned discovery/enrichment source; unsupported capabilities are disclosed rather than simulated.
+- Every social-derived field and activity observation retains its source and retrieval timestamp and complies with the source-specific retention/deletion policy.
+- Company and founder records remain separate and are connected only through attributed company-founder relationships.
 
 ## 19. Future Product Opportunities
 

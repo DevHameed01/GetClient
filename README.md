@@ -2,6 +2,13 @@
 
 This project contains the initial monorepo foundation for GetClient, based on the product requirements document in this folder.
 
+## Product and architecture documentation
+
+- [Product requirements](./GetClient%20Product%20Requirements%20Document.md)
+- [Architecture and planned social discovery boundaries](./ARCHITECTURE.md)
+
+Social discovery and enrichment for Instagram, X, and LinkedIn are planned requirements only; no such integrations or discovery results are currently implemented.
+
 ## Stack
 
 - Frontend: React + TypeScript + Vite
